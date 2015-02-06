@@ -1,31 +1,62 @@
+#define txPin 11 //пин отправки
 
-int ledPin = 13;                 // Светодиод подключенный к вход/выходу 13
-int dataPin = 5;                   // кнопка на входе 7
-int val = 0;                     // переменная для хранения значения
-int clockPin = 12;
-void setup()
-{
-   Serial.begin(9600);
-  pinMode(ledPin, OUTPUT);       // устанавливает режим работы - выход для 13го вход/выхода (pin)
-  pinMode(clockPin, OUTPUT );         //  устанавливает режим работы - вход для 7го вход/выхода (pin)
-pinMode(dataPin, OUTPUT);
-}
+
+void setup(){
  
+    pinMode(txPin, OUTPUT);
+    Serial.begin(9600);
+
+}
+
 void loop()
 {
-   int data;
-  for (data=2; data<8192; data=data+2)
+  int data=0;
+  int ser=-1;
+   for (data=0;data<4;data++)
   {
-    shiftOut(dataPin, clockPin, LSBFIRST, data); 
-    shiftOut(dataPin, clockPin,LSBFIRST, (data >> 8));  
+   for (int i=12; i>0; i--){
+      ser=bitRead(data,i-1)); // побитово перебираем и посылаем код
+      Serial.println(ser);
+ 
+    }
     
-   delay (10); 
-   shiftOut(dataPin, clockPin, LSBFIRST, data); 
-    shiftOut(dataPin, clockPin,LSBFIRST, (data >> 8));
-   delay (10); 
-   shiftOut(dataPin, clockPin, LSBFIRST, data); 
-    shiftOut(dataPin, clockPin,LSBFIRST, (data >> 8));
-   delay (250); 
+    //SendCame(data);
   }
+
+}
+
+void SendCame(long Code)
+{     
+  for (int i=0; i<4; i++) // посылку посылаем 4 раза подряд.
+  {
+    Send_preambula();
+    for (int i=12; i>0; i--){
+      SendBit(bitRead(Code,i-1)); // побитово перебираем и посылаем код
+    }
+    digitalWrite(txPin, LOW); 
+    delayMicroseconds(11520);
+  }
+}
+
+void SendBit(byte b){
+  if (b) {
+    digitalWrite(txPin, LOW);   // 1
+    delayMicroseconds(640);
+    digitalWrite(txPin, HIGH);
+    delayMicroseconds(320);
+  }
+  else {  
+    digitalWrite(txPin, LOW);    // 0
+    delayMicroseconds(320);
+    digitalWrite(txPin, HIGH);
+    delayMicroseconds(640);
+  }
+}
+
+void Send_preambula()
+{
+  digitalWrite(txPin, HIGH);   
+  delayMicroseconds(320);
+  digitalWrite(txPin, LOW);
 }
 
