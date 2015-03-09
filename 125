@@ -1,0 +1,38 @@
+#include <EEPROM.h>
+
+#include "rdm630.h"
+
+rdm630 rfid(6, 0);  //TX-pin of RDM630 connected to Arduino pin 6
+
+void setup()
+{
+    Serial.begin(9600);  // start serial to PC
+    rfid.begin();
+    int vid;
+    int b;
+    Serial.println("EEEPROM");
+    for (b=0;b<6;b++){
+      vid=EEPROM.read(b);
+        Serial.print(vid, HEX);
+    }
+     Serial.println("EEEPROM------------"); 
+     Serial.println();
+   
+ }
+
+void loop()
+{
+    byte data[6];
+    byte length;
+
+    if(rfid.available()){
+        rfid.getData(data,length);
+        Serial.println("Data valid");
+        Serial.println(length);
+        for(int i=0;i<length;i++){
+            Serial.print(data[i],HEX);
+            //EEPROM.write(i, data[i]);
+        }
+        Serial.println();
+    }
+}
