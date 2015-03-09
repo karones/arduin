@@ -1,9 +1,11 @@
 #include <EEPROM.h>
 
 #include "rdm630.h"
+#define maxcardcount 85  //максимум у нас 85 записанных карт. справедливо для freeduino (512 байт еепрома), в остальных случаях смотрим датасщит и меняем.
+
 
 rdm630 rfid(6, 0);  //TX-pin of RDM630 connected to Arduino pin 6
-
+int count=0;
 void setup()
 {
     Serial.begin(9600);  // start serial to PC
@@ -11,11 +13,19 @@ void setup()
     int vid;
     int b;
     Serial.println("EEEPROM");
-    for (b=0;b<6;b++){
-      vid=EEPROM.read(b);
+  
+    count=EEPROM.read(0); //считываем количество записанных карт, храниться в 0 байте
+    if (count<0||count>maxcardcount)
+      Serial.println("Error, nevernoe colichestvo zapissanix cart");
+      
+    for (b=1;b<count*6+1;b++){ //выводим все записанные карты.
+        vid=EEPROM.read(b);
         Serial.print(vid, HEX);
+        if((b % 6)==1){
+          Serial.println();
+        }
     }
-     Serial.println("EEEPROM------------"); 
+     Serial.println("------EEEPROM----------"); 
      Serial.println();
    
  }
@@ -28,11 +38,29 @@ void loop()
     if(rfid.available()){
         rfid.getData(data,length);
         Serial.println("Data valid");
-        Serial.println(length);
         for(int i=0;i<length;i++){
-            Serial.print(data[i],HEX);
-            //EEPROM.write(i, data[i]);
+            Serial.print(data[i],HEX); //вывод
+            
         }
         Serial.println();
+        // Если по каким то причинам значения count выпало из рабочих значений для отсутсвия затирания памяти  даем ошибку
+        if(count<0||count>maxcardcount){ 
+          Serial.println("Error, nevernoe colichestvo zapissanix cart"); 
+          while(1); //падаем в бесконечный цикл. 
+        }
+        //проверяем, если данной карты нету у нас в памяти, увеличиваем счетчик карт на 1, и заливаем
+        
+        if (count==0){ //если нет записанных карт, то пишем сразу и без проверки.
+             count++;
+             for(int i=1;i<7;i++){
+                EEPROM.write(i, data[i]);
+             }
+             EEPROM.write(0, count); 
+             Serial.println("Card write to eeprom");
+       }else{
+         Serial.println("a teper pora bainki a to ia zavtra ne vstany na rabity, zaficgahit proverky kodov v pamyat, esli coka net to pishem");
+         
+       } 
+        
     }
 }
