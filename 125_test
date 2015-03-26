@@ -1,24 +1,26 @@
 #include <EEPROM.h>
 
-#include "rdm630.h"
+//#include "rdm630.h"
 #define maxcardcount 85  //максимум у нас 85 записанных карт. справедливо для freeduino (512 байт еепрома), в остальных случаях смотрим датасщит и меняем.
 #define diod_pin 12
 #define eerom_byte 512
 #define button_pin 9
 
-
-
+#include <SoftwareSerial.h>
+SoftwareSerial rfid(6, 7);
+//SoftwareSerial rfid2(2, 3);
 String inputString = "";
 
 
-rdm630 rfid(6, 7);  //TX-pin of RDM630 connected to Arduino pin 6
+//rdm630 rfid(6, 7);  //TX-pin of RDM630 connected to Arduino pin 6
 byte count;
 void setup()
 {
      attachInterrupt(button_pin, fullerase, RISING); //паника //RISING прерывание вызывается только при смене значения на порту с LOW на HIGH
     pinMode(diod_pin, OUTPUT);
     Serial.begin(9600);  // start serial to PCRISING прерывание вызывается только при смене значения на порту с LOW на HIGH
-    rfid.begin();
+    rfid.begin(9600);
+      rfid2.begin(9600);
     int vid;
     int b;
     Serial.println("EEEPROM");
@@ -99,20 +101,24 @@ if (count<0||count>maxcardcount)
     }
 }
   
-void write(int number);
+void write(int number)
 {  
-   byte data[i];
+   byte data[6];
+   byte length=6;
    if(number>count||number<1){
      Serial.println("Error, nevernii nomer karti");
      return;
   }
-  for(int i=0;i<length;i++){
+  for(int i=0;i<6;i++){
                data[i]=EEPROM.read((number-1)*6+i+1);
              }
   while(1){
    //костыль. 
-   rfid.write
-    
+   for(int i=0;i<6;i++){
+   rfid.write(data[i]);
+   
+   
+   }
   }
 }
 
@@ -120,10 +126,14 @@ void write(int number);
 void loop()
 {
     byte data[6];
-    byte length;
+    byte length=6;
      //int test;
-    if(rfid.available()){
-        rfid.getData(data,length);
+    if(rfid.available()>0){
+        //rfid.getData(data,length);
+        for(int i=0;i<length;i++){
+        data[i]=rfid.read();
+        }
+        rfid.flush();
         Serial.println("Data valid");
         Serial.print("Length=");
         Serial.println(length);
@@ -185,6 +195,8 @@ void serialEvent() {
            fullerase();
        else if(inputString=="out\n")
             out();
+       else if(inputString=="test\n")
+           write(1);
        else{
            Serial.println("Command not found");
        }
