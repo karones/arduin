@@ -1,8 +1,18 @@
-#include <eeprom.h>
+#include <EEPROM.h>
+
+
 
 
 #define COIL 19 ///антенка) 
 #define SERIALDEBUG 1
+int bittime=256;
+byte datapointer=0;
+
+byte facility[2]={ 0x02, 0x0C };
+byte cardID[8]={ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+byte RFIDdata[128];
+int colsum[4]={ 0,0,0,0}; // storage for the column checksums
 
 void setup()
 {
@@ -158,7 +168,7 @@ void BuildCard(void)
   WriteData(cardID[6]);  
   WriteData(cardID[7]);
 
-  WriteChecksum(); чексумма
+  WriteChecksum(); //чексумма
 
 }
 
@@ -176,11 +186,11 @@ void TransmitManchester(int cycle, int data)
   }
 }
 
-void EmulateCard(void) //мне нужна эта функция
+void loop(void) //мне нужна эта функция
 {
-  #ifdef SERIALDEBUG 
+  
   Serial.println("Emulate Card Entered"); 
-  #endif  // enter a low power modewritedataLEDS(0);  // turn off the LEDs
+  
   
   BuildCard();
   
@@ -193,7 +203,7 @@ void EmulateCard(void) //мне нужна эта функция
     else Serial.print((int)RFIDdata[i]); 
   } 
   Serial.println(); 
-  #endif  
+
   
 
   while (1==1) 
