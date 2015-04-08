@@ -1,0 +1,209 @@
+#include <eeprom.h>
+
+
+#define COIL 19 ///антенка) 
+#define SERIALDEBUG 1
+
+void setup()
+{
+	 pinMode(COIL, OUTPUT);
+  //Start with it LOW  
+  digitalWrite(COIL, LOW);
+
+  if (EEPROM.read(0)==0xa5)
+  {
+      facility[0]=EEPROM.read(1);
+      facility[1]=EEPROM.read(2);
+      
+      cardID[0]=EEPROM.read(3);
+      cardID[1]=EEPROM.read(4);
+      cardID[2]=EEPROM.read(5);
+      cardID[3]=EEPROM.read(6);
+      cardID[4]=EEPROM.read(7);
+      cardID[5]=EEPROM.read(8);
+      cardID[6]=EEPROM.read(9);
+      cardID[7]=EEPROM.read(10);
+  }
+  else
+ {
+    EEPROM.write(0,0xa5);
+    facility[0]=0x02; EEPROM.write(1,facility[0]);  
+    facility[1]=0x0c; EEPROM.write(2,facility[1]);
+      for (int i=0; i<8; i++) 
+    {
+      cardID[i]=0; EEPROM.write(i+2,cardID[i]);
+    }
+  }
+    
+
+    #ifdef SERIALDEBUG 
+    Serial.begin(9600);  
+    delay(200);
+    Serial.println("  ");
+    Serial.println("RFID Spoofer (c) 2010 D Jackson"); 
+    #endif
+}
+
+void WriteHeader(void)
+{
+  // a header consists of 9 one bits
+  RFIDdata[datapointer++]=1; 
+  RFIDdata[datapointer++]=1;  
+  RFIDdata[datapointer++]=1;  
+  RFIDdata[datapointer++]=1; 
+  RFIDdata[datapointer++]=1; 
+  RFIDdata[datapointer++]=1; 
+  RFIDdata[datapointer++]=1; 
+  RFIDdata[datapointer++]=1; 
+  RFIDdata[datapointer++]=1; 
+}
+
+
+void WriteData(byte nibble)
+{
+  byte data;
+  byte rowsum=0;
+  for (int i=4; i>0; i--)
+  {
+    if ((nibble& 1<<i-1) ==0)  
+    {
+      data=0; 
+    }
+    else 
+    {
+      data=1;
+      rowsum++;  // increment the checksum value
+      colsum[i-1]++; // increment the column checksum
+    }
+
+
+    RFIDdata[datapointer++]= data;
+    #ifdef SERIALDEBUG 
+      Serial.print((int) data); 
+    #endif
+     
+  }
+  // write the row checksum out
+  if ((rowsum%2)==0)  
+  {
+    RFIDdata[datapointer++]=0; 
+    #ifdef SERIALDEBUG 
+      Serial.print((int)0); 
+    #endif
+    
+  }
+  else
+  {  
+    RFIDdata[datapointer++]=1; 
+    #ifdef SERIALDEBUG 
+      Serial.print((int)1); 
+    #endif
+  }
+
+    #ifdef SERIALDEBUG 
+      Serial.println(); 
+    #endif
+
+}
+
+
+void WriteChecksum(void)
+{
+  byte data;
+  byte rowsum=0;
+  for (int i=4; i>0; i--)
+  {
+    if ((colsum[i-1]%2) ==0)  
+    {
+      RFIDdata[datapointer++]=0; 
+     #ifdef SERIALDEBUG 
+      Serial.print((int)0); 
+     #endif
+    }
+    else
+    {
+      RFIDdata[datapointer++]=1; 
+      #ifdef SERIALDEBUG 
+      Serial.print((int) 1); 
+      #endif
+    }  
+  }
+
+  // write the stop bit
+  RFIDdata[datapointer++]=0; 
+
+      #ifdef SERIALDEBUG 
+      Serial.print((int)0); 
+      #endif
+
+}
+void BuildCard(void)
+{
+  // load up the RFID array with card data
+  // intitalise the write pointer
+  datapointer=0;
+
+  WriteHeader(); //отправляем девять 1
+  // Write facility
+  WriteData(facility[0]); //код производителя
+  WriteData(facility[1]);
+ 
+  // Write cardID
+  WriteData(cardID[0]);
+  WriteData(cardID[1]);
+  WriteData(cardID[2]);
+  WriteData(cardID[3]);
+  WriteData(cardID[4]);  //почему 8 байт когда у меня 6
+  WriteData(cardID[5]);
+  WriteData(cardID[6]);  
+  WriteData(cardID[7]);
+
+  WriteChecksum(); чексумма
+
+}
+
+
+void TransmitManchester(int cycle, int data)
+{
+
+  if(cycle ^ data == 1)
+  {
+    digitalWrite(COIL, HIGH);
+  }
+  else
+  {
+    digitalWrite(COIL, LOW);  
+  }
+}
+
+void EmulateCard(void) //мне нужна эта функция
+{
+  #ifdef SERIALDEBUG 
+  Serial.println("Emulate Card Entered"); 
+  #endif  // enter a low power modewritedataLEDS(0);  // turn off the LEDs
+  
+  BuildCard();
+  
+
+  Serial.println(); 
+  for(int i = 0; i < 64; i++)
+  {
+    if (RFIDdata[i]==1) Serial.print("1"); 
+    else if (RFIDdata[i]==0) Serial.print("0"); 
+    else Serial.print((int)RFIDdata[i]); 
+  } 
+  Serial.println(); 
+  #endif  
+  
+
+  while (1==1) 
+  {
+    for(int i = 0; i < 64; i++)
+    {
+      TransmitManchester(0, RFIDdata[i]);
+      delayMicroseconds(bittime);
+      TransmitManchester(1, RFIDdata[i]);
+      delayMicroseconds(bittime); 
+    } 
+  }
+}
