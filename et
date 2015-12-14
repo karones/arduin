@@ -1,0 +1,92 @@
+
+
+#include <Ethernet.h>
+// the sensor communicates using SPI, so include the library:
+#include <SPI.h>
+
+
+// assign a MAC address for the Ethernet controller.
+// fill in your address here:
+byte mac[] = {
+  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+};
+// assign an IP address for the controller:
+IPAddress ip(192, 168, 1, 20);
+
+
+// Initialize the Ethernet server library
+// with the IP address and port you want to use
+// (port 80 is default for HTTP):
+EthernetServer server(80);
+
+
+
+void setup() {
+  // start the SPI library:
+  SPI.begin();
+
+  // start the Ethernet connection and the server:
+  Ethernet.begin(mac, ip);
+  server.begin();
+
+
+
+  Serial.begin(9600);
+
+  // give the sensor and Ethernet shield time to set up:
+  delay(1000);
+
+  
+
+}
+
+void loop() {
+  // check for a reading no more than once a second.
+  if (millis() - lastReadingTime > 1000) {
+    // if there's a reading ready, read it:
+    // don't do anything until the data ready pin is high:
+    if (digitalRead(dataReadyPin) == HIGH) {
+      getData();
+      // timestamp the last time you got a reading:
+      lastReadingTime = millis();
+    }
+  }
+
+  // listen for incoming Ethernet connections:
+  listenForEthernetClients();
+}
+
+
+
+
+void listenForEthernetClients() {
+  // listen for incoming clients
+  EthernetClient client = server.available();
+  if (client) {
+
+    // an http request ends with a blank line
+
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        inputString += inChar;
+        // if you've gotten to the end of the line (received a newline
+        // character) and the line is blank, the http request has ended,
+        // so you can send a reply
+        if (c == '\n')
+        {
+          // send a standard http response header
+         
+        }
+      }
+    }
+    // give the web browser time to receive the data
+    delay(1);
+    // close the connection:
+    client.stop();
+  }
+}
+
+
+
+
