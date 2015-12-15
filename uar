@@ -1,4 +1,4 @@
-  #define API "1.0.1"
+#define API "1.0.1"
 
 unsigned int messageCount = 1; //todo изменить тип или сделать обработку при переполнении.
 bool Status = false;  //0 free 1 work
@@ -8,16 +8,29 @@ struct axisStruct  //todo шаблон
   int index;
   int maxValue;
   int minValue;
+  String axisName;
 };
 typedef struct axisStruct axisStruct;
-#define COUNT_AXIS 5
+#define COUNT_AXIS 1
 axisStruct axisData[COUNT_AXIS]; //пока вручную, заполняется в функции //
+
+struct functionStruct  //todo шаблон
+{
+  int index;
+  int maxValue;
+  int minValue;
+  String functionName;
+};
+typedef struct functionStruct functionStruct;
+#define COUNT_FUNCTION 5
+functionStruct functionData[COUNT_FUNCTION]; //пока вручную, заполняется в функции //
 
 void setup() {
 
   inputString.reserve(200);
   Serial.begin(9600);
   CreateAxis();
+  CreateFunctions();
 
 }
 
@@ -26,6 +39,12 @@ void CreateAxis()
   axisData[0].index = 5;
   axisData[0].minValue = -50;
   axisData[0].maxValue = 50;
+  axisData[0].axisName = "STRAIGHT";
+  
+}
+
+void CreateFunctions()
+{
   
 }
 void loop() {
@@ -45,8 +64,35 @@ void moduleConnect(String mData)
 
 void moduleCapalities()
 {
+    String function = "function@1@move@num@num,axis@5@STRAIGHT@100@-100";
   //todo сделать генерацию списка
-  String function = "function@1@move@num@num,axis@1@STRAIGHT@100@-100";
+  for (int i=0; i<COUNT_FUNCTION; i++)
+    {
+      if (i == 0)
+        function = "function@";
+      else
+        function = ",function@";
+      function = function + String(functionData[i].index);
+      function = function + "@";
+      function = function + String(functionData[i].functionName);
+      function = function + "@";
+
+        
+    }
+ 
+  for (int i=0; i<COUNT_AXIS; i++)
+    {
+      function = function + ",axis@";
+      function = function + String(axisData[i].index);
+      function = function + "@";
+      function = function + String(axisData[i].axisName);
+      function = function + "@";
+      function = function + String(axisData[i].maxValue);
+      function = function + "@";
+      function = function + String(axisData[i].minValue);
+      function = function + "@";
+    }
+
   function = ":" + function;
   function = String (API) + function;
   function = ":" + function;
@@ -65,29 +111,21 @@ int LengthInt(int i)
 void CreateMessage(String message)
 {
 
-  //message = "RCML:";
+ Serial.print("create message:");
+ Serial.println(message);
   message = message + "&&";
   message = ":" + message;
   message = String(messageCount) + message;
- /// Serial.println(message);
+
   unsigned int length = message.length() - 2; //&&
- // Serial.println(length);
-//  if (LengthInt(length) == LengthInt(length + LengthInt (length)))
-//  {
-//    length = + LengthInt(length);
-//  }
-//  else
-//    {
-//      length = + LengthInt(length) + 1;
-//    }
-   //  Serial.println(message);
+
     message = ":" + message;
   message = String(length) + message;
- //Serial.println(message);
+
   message = "RCML:" + message;
-  //Serial.println(message);
+
   messageCount ++;
- // Serial.print(message);
+  Serial.print(message);
   return;
 }
 void moduleRequre(unsigned int mCount)
@@ -163,13 +201,13 @@ void setAxis(int index, int value)
         if ((axisData[i].minValue < value) and (value < axisData[i].maxValue))
         {
           setAxis(index, value);
-        //  return;
+          messageCount++;
+          return;
         }
         else
         {
-         CreateMessage("answer:error:axis_value");    s
-         
-         //return;
+         CreateMessage("answer:error:axis_value");
+         return;
         }
       }
      
@@ -178,23 +216,31 @@ void setAxis(int index, int value)
     return;
  }
 
+int function_1(String mData)
+{
+  return 0; 
+}
+
 void moduleExecute(String mData)
 {
   
   Serial.println("execute function");
   String index = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
   int indexFunction= index.toInt();
-  switch(indexFunction)
-  {
-case 5:
+  inputString = inputString.substring(inputString.indexOf(':', inputString.indexOf(":") + 1 ));
+  switch (indexFunction){
+    case 1:
     {
-      //bla bla bla
-      break;
+    function_1(inputString);
+    break;
     }
-    default:
+      
+    default: 
     CreateMessage("answer:error:function_index");
+    
   }
-  messageCount++;
+  
+  
   return;
 }
 
