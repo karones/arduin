@@ -1,4 +1,4 @@
-#define API "1.0.1"
+  #define API "1.0.1"
 
 unsigned int messageCount = 1; //todo изменить тип или сделать обработку при переполнении.
 bool Status = false;  //0 free 1 work
@@ -17,18 +17,27 @@ void setup() {
 
   inputString.reserve(200);
   Serial.begin(9600);
+  CreateAxis();
 
 }
 
+void CreateAxis()
+{
+  axisData[0].index = 5;
+  axisData[0].minValue = -50;
+  axisData[0].maxValue = 50;
+  
+}
 void loop() {
   // put your main code here, to run repeatedly:
-
+serialEvent(); 
 }
 
 void moduleConnect(String mData)
 {
-  if (mData.lastIndexOf(String (API)))
-    mData = "answer:accepted" + String(API);
+  Serial.println("connect");
+  if (mData.lastIndexOf(String (API)) != -1)
+    mData = "answer:accepted:" + String(API);
   else
     mData = "answer:error";
   CreateMessage(mData);
@@ -46,6 +55,7 @@ void moduleCapalities()
 }
 int LengthInt(int i)
 {
+ // Serial.println("sadasdasd");
   int count = 0;
   while (i / 10 != 0)
     count ++;
@@ -56,18 +66,28 @@ void CreateMessage(String message)
 {
 
   //message = "RCML:";
-  message = + "&&";
+  message = message + "&&";
   message = ":" + message;
   message = String(messageCount) + message;
-  unsigned int length = message.length();
-  if (LengthInt(length) == LengthInt(length + LengthInt (length)))
-    length = + LengthInt(length);
-  else
-    length = + LengthInt(length) + 1;
+ /// Serial.println(message);
+  unsigned int length = message.length() - 2; //&&
+ // Serial.println(length);
+//  if (LengthInt(length) == LengthInt(length + LengthInt (length)))
+//  {
+//    length = + LengthInt(length);
+//  }
+//  else
+//    {
+//      length = + LengthInt(length) + 1;
+//    }
+   //  Serial.println(message);
+    message = ":" + message;
   message = String(length) + message;
+ //Serial.println(message);
   message = "RCML:" + message;
+  //Serial.println(message);
   messageCount ++;
-  Serial.print(message);
+ // Serial.print(message);
   return;
 }
 void moduleRequre(unsigned int mCount)
@@ -113,31 +133,46 @@ void moduleFree(unsigned int mCount)
 
 void setAxis(int index, int value)
 {
-//  Serial.println("axis ", index,  "state value ", value);
-  return;
+
+ Serial.println("set axis");
+   return;
 }
  void moduleAxis(String mMessage)
  {
+  Serial.println("moduleAxis");
   int index, value;
-  String mData = mMessage.substring((mMessage.indexOf(':', mMessage.indexOf(":") + 1 )), (mMessage.indexOf(':', mMessage.indexOf(":") + 2 )));
+
+  String mData;
+  mData = mMessage.substring((mMessage.indexOf(':', mMessage.indexOf(":") + 1 )), mMessage.lastIndexOf(":")); //, (mMessage.indexOf(':', mMessage.indexOf(":") + 2 )));
+
+   mData.replace(":", " ");
+    mData.trim();
   index = mData.toInt();
-  mData = mMessage.substring((mMessage.indexOf(':', mMessage.indexOf(":") + 2 )), (mMessage.indexOf(':', mMessage.indexOf(":") + 3 )));
+
+  mData = mMessage.substring((mMessage.lastIndexOf(":")), (mMessage.indexOf(':', mMessage.lastIndexOf(":") + 1 )));
+    mData.replace(":", " ");
+        mData.trim();
   value = mData.toInt();
+  Serial.println(index);
+  Serial.println(axisData[0].maxValue);
+    Serial.println( index + " " + value);
     for (int i=0; i<COUNT_AXIS; i++)
     {
       if (axisData[i].index == index)
       {
-        if (axisData[i].minValue < value < axisData[i].maxValue)
+        if ((axisData[i].minValue < value) and (value < axisData[i].maxValue))
         {
           setAxis(index, value);
-          return;
+        //  return;
         }
         else
         {
-         CreateMessage("answer:error:axis_value");
-          return;
+         CreateMessage("answer:error:axis_value");    s
+         
+         //return;
         }
       }
+     
     }
     CreateMessage("answer:error:axis_index");
     return;
@@ -164,42 +199,55 @@ case 5:
 }
 
 void serialEvent() {
+
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
+   
     // add it to the inputString:
     inputString += inChar;
     // if the incoming character is a newline, set a flag
     // so the main loop can do something about it:
     if (inChar == '\n') {
+         Serial.println("int " + inputString);
       String mData = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
+     mData.replace(":", " ");
+     mData.trim();
       unsigned int length = mData.toInt();
+      //RCML:6:2:axis:5:5&&
+      Serial.println("dlina " + length);
       if (length != 0) {
         mData = inputString.substring((inputString.indexOf(':', inputString.indexOf(":") + 1 )), (inputString.indexOf(':', inputString.indexOf(":") + 2 )));
+       Serial.println("mdata sd " + mData);
+        mData.replace(":", " ");
+        mData.trim();
         unsigned int mCount = mData.toInt();
+        
         if (mCount != messageCount)
         {
-          Serial.print("error");
+          Serial.println("error");
         }
-        mData = inputString.substring(inputString.indexOf(":"), inputString.indexOf("&&"));
-        if (mData.lastIndexOf("connect"))
+        mData = inputString.substring((inputString.indexOf(':', inputString.indexOf(":") + 3 )), inputString.indexOf("&&"));
+        Serial.println("mdata " + mData);
+        if (mData.lastIndexOf("connect") != -1)
           moduleConnect(mData);
-          if (mData.lastIndexOf("require"))
+          if (mData.lastIndexOf("require")!= -1)
           moduleRequre(mCount);
-        if (mData.lastIndexOf("robot_capabilites"))
+        if (mData.lastIndexOf("robot_capabilites")!= -1)
           moduleCapalities();
-        if (mData.lastIndexOf("execute"))
+        if (mData.lastIndexOf("execute")!= -1)
           moduleExecute(mData);
-             if (mData.lastIndexOf("axis"))
-          moduleExecute(mData);
-        if (mData.lastIndexOf("free"))
+             if (mData.lastIndexOf("axis")!= -1)
+          moduleAxis(mData);
+        if (mData.lastIndexOf("free")!= -1)
           moduleFree(mCount);
 
       }
 
-
+ inputString ="";
 
     }
+   
   }
 
 }
