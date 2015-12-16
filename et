@@ -3,7 +3,55 @@
 #include <Ethernet.h>
 // the sensor communicates using SPI, so include the library:
 #include <SPI.h>
+#define API "1.0.1"
 
+unsigned int messageCount = 1; //todo изменить тип или сделать обработку при переполнении.
+bool Status = false;  //0 free 1 work
+String inputString = "";
+struct axisStruct  //todo шаблон
+{
+  int index;
+  int maxValue;
+  int minValue;
+  String axisName;
+};
+typedef struct axisStruct axisStruct;
+#define COUNT_AXIS 1
+axisStruct axisData[COUNT_AXIS]; //пока вручную, заполняется в функции //
+
+struct functionStruct  //todo шаблон
+{
+  int index;
+  int maxValue;
+  int minValue;
+  String functionName;
+};
+typedef struct functionStruct functionStruct;
+#define COUNT_FUNCTION 5
+functionStruct functionData[COUNT_FUNCTION]; //пока вручную, заполняется в функции //
+
+void setup() {
+
+  inputString.reserve(200);
+  Serial.begin(9600);
+  CreateAxis();
+  CreateFunctions();
+
+}
+
+void CreateAxis()
+{
+  axisData[0].index = 5;
+  axisData[0].minValue = -50;
+  axisData[0].maxValue = 50;
+  axisData[0].axisName = "STRAIGHT";
+  
+}
+
+void CreateFunctions()
+{
+  
+}
 
 // assign a MAC address for the Ethernet controller.
 // fill in your address here:
@@ -14,9 +62,7 @@ byte mac[] = {
 IPAddress ip(192, 168, 1, 20);
 
 
-// Initialize the Ethernet server library
-// with the IP address and port you want to use
-// (port 80 is default for HTTP):
+
 EthernetServer server(80);
 
 
@@ -40,6 +86,197 @@ void setup() {
 
 }
 
+void moduleConnect(String mData)
+{
+
+  if (mData.lastIndexOf(String (API)) != -1)
+    mData = "answer:accepted:" + String(API);
+  else
+    mData = "answer:error";
+  CreateMessage(mData);
+}
+
+void moduleCapalities()
+{
+    String function = "function@1@move@num@num,axis@5@STRAIGHT@100@-100";
+  //todo сделать генерацию списка
+  for (int i=0; i<COUNT_FUNCTION; i++)
+    {
+      if (i == 0)
+        function = "function@";
+      else
+        function = ",function@";
+      function = function + String(functionData[i].index);
+      function = function + "@";
+      function = function + String(functionData[i].functionName);
+      function = function + "@";
+
+        
+    }
+ 
+  for (int i=0; i<COUNT_AXIS; i++)
+    {
+      function = function + ",axis@";
+      function = function + String(axisData[i].index);
+      function = function + "@";
+      function = function + String(axisData[i].axisName);
+      function = function + "@";
+      function = function + String(axisData[i].maxValue);
+      function = function + "@";
+      function = function + String(axisData[i].minValue);
+      function = function + "@";
+    }
+
+  function = ":" + function;
+  function = String (API) + function;
+  function = ":" + function;
+  function = "answer:accepted" + function;
+  CreateMessage(function);
+}
+int LengthInt(int i)
+{
+
+  int count = 0;
+  while (i / 10 != 0)
+    count ++;
+  return count;
+}
+
+void CreateMessage(String message)
+{
+
+
+  message = message + "&&";
+  message = ":" + message;
+  message = String(messageCount) + message;
+
+  unsigned int length = message.length() - 2; //&&
+
+    message = ":" + message;
+  message = String(length) + message;
+
+  message = "RCML:" + message;
+
+  messageCount ++;
+  server.write(message);
+  return;
+}
+void moduleRequre(unsigned int mCount)
+{
+  if (!Status)
+  {
+    Status = true;
+    CreateMessage("answer:accepted");
+  }
+  else
+  {
+    if(mCount == messageCount)
+    CreateMessage("answer:error:required_by_this");
+    else
+     CreateMessage("answer:error:required_by_another");
+   }
+  return;
+}
+
+void freeRobot()
+{
+  Status = false;
+  server.stop;
+  return;
+}
+
+void moduleFree(unsigned int mCount)
+{
+  if (Status)
+  {
+     if(mCount == messageCount)
+     {
+      freeRobot();
+      CreateMessage("answer:accepted");
+     }
+     else
+     CreateMessage("answer:error:required_by_another");
+  }
+  else
+  {
+     CreateMessage("answer:error:already_freed");
+  }
+}
+
+void setAxis(int index, int value)
+{
+
+ Serial.println("set axis");
+   return;
+}
+ void moduleAxis(String mMessage)
+ {
+  Serial.println("moduleAxis");
+  int index, value;
+
+  String mData;
+  mData = mMessage.substring((mMessage.indexOf(':', mMessage.indexOf(":") + 1 )), mMessage.lastIndexOf(":")); //, (mMessage.indexOf(':', mMessage.indexOf(":") + 2 )));
+
+   mData.replace(":", " ");
+    mData.trim();
+  index = mData.toInt();
+
+  mData = mMessage.substring((mMessage.lastIndexOf(":")), (mMessage.indexOf(':', mMessage.lastIndexOf(":") + 1 )));
+    mData.replace(":", " ");
+        mData.trim();
+  value = mData.toInt();
+  Serial.println(index);
+  Serial.println(axisData[0].maxValue);
+    Serial.println( index + " " + value);
+    for (int i=0; i<COUNT_AXIS; i++)
+    {
+      if (axisData[i].index == index)
+      {
+        if ((axisData[i].minValue < value) and (value < axisData[i].maxValue))
+        {
+          setAxis(index, value);
+          messageCount++;
+          return;
+        }
+        else
+        {
+         CreateMessage("answer:error:axis_value");
+         return;
+        }
+      }
+     
+    }
+    CreateMessage("answer:error:axis_index");
+    return;
+ }
+
+int function_1(String mData)
+{
+  return 0; 
+}
+
+void moduleExecute(String mData)
+{
+  
+  Serial.println("execute function");
+  String index = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
+  int indexFunction= index.toInt();
+  inputString = inputString.substring(inputString.indexOf(':', inputString.indexOf(":") + 1 ));
+  switch (indexFunction){
+    case 1:
+    {
+    function_1(inputString);
+    break;
+    }
+      
+    default: 
+    CreateMessage("answer:error:function_index");
+    
+  }
+  
+  
+  return;
+}
 void loop() {
   // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000) {
@@ -73,20 +310,46 @@ void listenForEthernetClients() {
         // if you've gotten to the end of the line (received a newline
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
-        if (c == '\n')
+        if (inChar == '\n') {
+         Serial.println("int " + inputString);
+      String mData = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
+     mData.replace(":", " ");
+     mData.trim();
+      unsigned int length = mData.toInt();
+      //RCML:6:2:axis:5:5&&
+      Serial.println("dlina " + length);
+      if (length != 0) {
+        mData = inputString.substring((inputString.indexOf(':', inputString.indexOf(":") + 1 )), (inputString.indexOf(':', inputString.indexOf(":") + 2 )));
+       Serial.println("mdata sd " + mData);
+        mData.replace(":", " ");
+        mData.trim();
+        unsigned int mCount = mData.toInt();
+        
+        if (mCount != messageCount)
         {
-          // send a standard http response header
-         
+          Serial.println("error");
         }
+        mData = inputString.substring((inputString.indexOf(':', inputString.indexOf(":") + 3 )), inputString.indexOf("&&"));
+        Serial.println("mdata " + mData);
+        if (mData.lastIndexOf("connect") != -1)
+          moduleConnect(mData);
+          if (mData.lastIndexOf("require")!= -1)
+          moduleRequre(mCount);
+        if (mData.lastIndexOf("robot_capabilites")!= -1)
+          moduleCapalities();
+        if (mData.lastIndexOf("execute")!= -1)
+          moduleExecute(mData);
+             if (mData.lastIndexOf("axis")!= -1)
+          moduleAxis(mData);
+        if (mData.lastIndexOf("free")!= -1)
+          moduleFree(mCount);
+
       }
+
+ inputString ="";
+
     }
-    // give the web browser time to receive the data
-    delay(1);
-    // close the connection:
-    client.stop();
+   
   }
+
 }
-
-
-
-
