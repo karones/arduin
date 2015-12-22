@@ -4,6 +4,15 @@
 // the sensor communicates using SPI, so include the library:
 #include <SPI.h>
 #define API "1.0.1"
+byte mac[] = {
+  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+};
+// assign an IP address for the controller:
+IPAddress ip(192, 168, 1, 20);
+ 
+
+
+EthernetServer server(80);
 
 unsigned int messageCount = 1; //todo изменить тип или сделать обработку при переполнении.
 bool Status = false;  //0 free 1 work
@@ -22,18 +31,26 @@ axisStruct axisData[COUNT_AXIS]; //пока вручную, заполняетс
 struct functionStruct  //todo шаблон
 {
   int index;
-  int maxValue;
-  int minValue;
+  String functionString;
   String functionName;
 };
 typedef struct functionStruct functionStruct;
 #define COUNT_FUNCTION 5
 functionStruct functionData[COUNT_FUNCTION]; //пока вручную, заполняется в функции //
 
-void setup() {
+void setup() 
+{
 
   inputString.reserve(200);
-  Serial.begin(9600);
+    // start the SPI library:
+  SPI.begin();
+
+  // start the Ethernet connection and the server:
+  Ethernet.begin(mac, ip);
+  server.begin();
+
+ // give the sensor and Ethernet shield time to set up:
+  delay(1000);
   CreateAxis();
   CreateFunctions();
 
@@ -50,45 +67,19 @@ void CreateAxis()
 
 void CreateFunctions()
 {
-  
+  functionData[0].index = 1;
+  functionData[0].functionName = "move";
+  functionData[0].functionString = "@num@num";
 }
-
-// assign a MAC address for the Ethernet controller.
-// fill in your address here:
-byte mac[] = {
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-};
-// assign an IP address for the controller:
-IPAddress ip(192, 168, 1, 20);
-
-
-
-EthernetServer server(80);
-
-
-
-void setup() {
-  // start the SPI library:
-  SPI.begin();
-
-  // start the Ethernet connection and the server:
-  Ethernet.begin(mac, ip);
-  server.begin();
-
-
-
-  Serial.begin(9600);
-
-  // give the sensor and Ethernet shield time to set up:
-  delay(1000);
-
-  
-
+void loop() 
+{
+   // listen for incoming Ethernet connections:
+  listenForEthernetClients();
 }
 
 void moduleConnect(String mData)
 {
-
+  Serial.println("connect");
   if (mData.lastIndexOf(String (API)) != -1)
     mData = "answer:accepted:" + String(API);
   else
@@ -98,8 +89,7 @@ void moduleConnect(String mData)
 
 void moduleCapalities()
 {
-    String function = "function@1@move@num@num,axis@5@STRAIGHT@100@-100";
-  //todo сделать генерацию списка
+  String function;
   for (int i=0; i<COUNT_FUNCTION; i++)
     {
       if (i == 0)
@@ -110,7 +100,8 @@ void moduleCapalities()
       function = function + "@";
       function = function + String(functionData[i].functionName);
       function = function + "@";
-
+      function = function + String(functionData[i].functionString);
+      function = function + "@";
         
     }
  
@@ -133,18 +124,9 @@ void moduleCapalities()
   function = "answer:accepted" + function;
   CreateMessage(function);
 }
-int LengthInt(int i)
-{
-
-  int count = 0;
-  while (i / 10 != 0)
-    count ++;
-  return count;
-}
 
 void CreateMessage(String message)
 {
-
 
   message = message + "&&";
   message = ":" + message;
@@ -158,7 +140,7 @@ void CreateMessage(String message)
   message = "RCML:" + message;
 
   messageCount ++;
-  server.write(message);
+//    server.write(message);
   return;
 }
 void moduleRequre(unsigned int mCount)
@@ -181,7 +163,6 @@ void moduleRequre(unsigned int mCount)
 void freeRobot()
 {
   Status = false;
-  server.stop;
   return;
 }
 
@@ -206,17 +187,14 @@ void moduleFree(unsigned int mCount)
 void setAxis(int index, int value)
 {
 
- Serial.println("set axis");
+
    return;
 }
  void moduleAxis(String mMessage)
  {
-  Serial.println("moduleAxis");
   int index, value;
-
   String mData;
   mData = mMessage.substring((mMessage.indexOf(':', mMessage.indexOf(":") + 1 )), mMessage.lastIndexOf(":")); //, (mMessage.indexOf(':', mMessage.indexOf(":") + 2 )));
-
    mData.replace(":", " ");
     mData.trim();
   index = mData.toInt();
@@ -225,10 +203,7 @@ void setAxis(int index, int value)
     mData.replace(":", " ");
         mData.trim();
   value = mData.toInt();
-  Serial.println(index);
-  Serial.println(axisData[0].maxValue);
-    Serial.println( index + " " + value);
-    for (int i=0; i<COUNT_AXIS; i++)
+   for (int i=0; i<COUNT_AXIS; i++)
     {
       if (axisData[i].index == index)
       {
@@ -236,7 +211,7 @@ void setAxis(int index, int value)
         {
           setAxis(index, value);
           messageCount++;
-          return;
+          return; 
         }
         else
         {
@@ -250,91 +225,97 @@ void setAxis(int index, int value)
     return;
  }
 
-int function_1(String mData)
+void moves (int param1, int param2)
 {
+  
+}
+int function_1(String inputString)
+{
+  int param1, param2;
+  Serial.println(inputString);
+  
+  String data = inputString.substring(0, inputString.indexOf(","));
+   data.replace(":", " ");
+    data.trim();
+    Serial.println(data);
+  param1 = data.toInt();
+  data = inputString.substring(inputString.indexOf(","));
+   data.replace(",", " ");
+    data.trim();
+        Serial.println(data);
+  param2 = data.toInt();
+  Serial.println(param1);
+  Serial.println(param2);
+  moves(param1, param2);
   return 0; 
 }
 
+
+
 void moduleExecute(String mData)
 {
-  
-  Serial.println("execute function");
-  String index = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
+
+  mData = mData.substring(mData.indexOf(':', mData.indexOf(":") + 5 ));
+  mData = mData.substring(mData.indexOf(':', mData.indexOf(":") + 1 ));
+
+  String index = mData.substring(mData.indexOf(":"), (mData.indexOf(':', mData.indexOf(":") + 1 )));
+
+    index.replace(":", " ");
+    index.trim();
   int indexFunction= index.toInt();
-  inputString = inputString.substring(inputString.indexOf(':', inputString.indexOf(":") + 1 ));
+Serial.println(mData);
+  mData = mData.substring(mData.indexOf(':', mData.indexOf(":") + 1 ));
+
+  Serial.println(mData);
   switch (indexFunction){
     case 1:
     {
-    function_1(inputString);
+    function_1(mData);
     break;
     }
-      
     default: 
     CreateMessage("answer:error:function_index");
-    
-  }
-  
-  
+    }
   return;
 }
-void loop() {
-  // check for a reading no more than once a second.
-  if (millis() - lastReadingTime > 1000) {
-    // if there's a reading ready, read it:
-    // don't do anything until the data ready pin is high:
-    if (digitalRead(dataReadyPin) == HIGH) {
-      getData();
-      // timestamp the last time you got a reading:
-      lastReadingTime = millis();
-    }
-  }
 
-  // listen for incoming Ethernet connections:
-  listenForEthernetClients();
-}
-
-
-
-
-void listenForEthernetClients() {
+void listenForEthernetClients() 
+{
   // listen for incoming clients
   EthernetClient client = server.available();
-  if (client) {
+
 
     // an http request ends with a blank line
 
     while (client.connected()) {
       if (client.available()) {
-        char c = client.read();
+        char inChar = client.read();
         inputString += inChar;
         // if you've gotten to the end of the line (received a newline
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
-         if ((inChar == '&') and (inputString.charAt(inputString.length()-2) == '&'))
+     if ((inChar == '&') and (inputString.charAt(inputString.length()-2) == '&'))
     {
-         Serial.println("int " + inputString);
-      String mData = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
-     mData.replace(":", " ");
+       String mData = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
+        mData.replace(":", " ");
      mData.trim();
       unsigned int length = mData.toInt();
       //RCML:6:2:axis:5:5&&
-      Serial.println("dlina " + length);
-      if (length != 0) {
+       if (length != 0) {
         mData = inputString.substring((inputString.indexOf(':', inputString.indexOf(":") + 1 )), (inputString.indexOf(':', inputString.indexOf(":") + 2 )));
-       Serial.println("mdata sd " + mData);
+ 
         mData.replace(":", " ");
         mData.trim();
         unsigned int mCount = mData.toInt();
         
         if (mCount != messageCount)
         {
-          Serial.println("error");
+          //todo
         }
         mData = inputString.substring((inputString.indexOf(':', inputString.indexOf(":") + 3 )), inputString.indexOf("&&"));
-        Serial.println("mdata " + mData);
-        if (mData.lastIndexOf("connect") != -1)
+       if (mData.lastIndexOf("connect") != -1)
           moduleConnect(mData);
-          if (mData.lastIndexOf("require")!= -1)
+        if (mData.lastIndexOf("require")!= -1)
           moduleRequre(mCount);
         if (mData.lastIndexOf("robot_capabilites")!= -1)
           moduleCapalities();
@@ -350,7 +331,7 @@ void listenForEthernetClients() {
  inputString ="";
 
     }
-   
-  }
-
+      }
+    }
 }
+
