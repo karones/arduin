@@ -17,8 +17,7 @@ axisStruct axisData[COUNT_AXIS]; //пока вручную, заполняетс
 struct functionStruct  //todo шаблон
 {
   int index;
-  int maxValue;
-  int minValue;
+  String functionString;
   String functionName;
 };
 typedef struct functionStruct functionStruct;
@@ -45,7 +44,9 @@ void CreateAxis()
 
 void CreateFunctions()
 {
-  
+  functionData[0].index = 1;
+  functionData[0].functionName = "move";
+  functionData[0].functionString = "@num@num";
 }
 void loop() {
   // put your main code here, to run repeatedly:
@@ -64,8 +65,7 @@ void moduleConnect(String mData)
 
 void moduleCapalities()
 {
-    String function = "function@1@move@num@num,axis@5@STRAIGHT@100@-100";
-  //todo сделать генерацию списка
+  String function;
   for (int i=0; i<COUNT_FUNCTION; i++)
     {
       if (i == 0)
@@ -76,7 +76,8 @@ void moduleCapalities()
       function = function + "@";
       function = function + String(functionData[i].functionName);
       function = function + "@";
-
+      function = function + String(functionData[i].functionString);
+      function = function + "@";
         
     }
  
@@ -99,20 +100,10 @@ void moduleCapalities()
   function = "answer:accepted" + function;
   CreateMessage(function);
 }
-int LengthInt(int i)
-{
- // Serial.println("sadasdasd");
-  int count = 0;
-  while (i / 10 != 0)
-    count ++;
-  return count;
-}
 
 void CreateMessage(String message)
 {
 
- Serial.print("create message:");
- Serial.println(message);
   message = message + "&&";
   message = ":" + message;
   message = String(messageCount) + message;
@@ -172,17 +163,14 @@ void moduleFree(unsigned int mCount)
 void setAxis(int index, int value)
 {
 
- Serial.println("set axis");
+
    return;
 }
  void moduleAxis(String mMessage)
  {
-  Serial.println("moduleAxis");
   int index, value;
-
   String mData;
   mData = mMessage.substring((mMessage.indexOf(':', mMessage.indexOf(":") + 1 )), mMessage.lastIndexOf(":")); //, (mMessage.indexOf(':', mMessage.indexOf(":") + 2 )));
-
    mData.replace(":", " ");
     mData.trim();
   index = mData.toInt();
@@ -191,10 +179,7 @@ void setAxis(int index, int value)
     mData.replace(":", " ");
         mData.trim();
   value = mData.toInt();
-  Serial.println(index);
-  Serial.println(axisData[0].maxValue);
-    Serial.println( index + " " + value);
-    for (int i=0; i<COUNT_AXIS; i++)
+   for (int i=0; i<COUNT_AXIS; i++)
     {
       if (axisData[i].index == index)
       {
@@ -202,7 +187,7 @@ void setAxis(int index, int value)
         {
           setAxis(index, value);
           messageCount++;
-          return;
+          return; 
         }
         else
         {
@@ -216,38 +201,64 @@ void setAxis(int index, int value)
     return;
  }
 
-int function_1(String mData)
+void moves (int param1, int param2)
 {
+  
+}
+int function_1(String inputString)
+{
+  int param1, param2;
+  Serial.println(inputString);
+  
+  String data = inputString.substring(0, inputString.indexOf(","));
+   data.replace(":", " ");
+    data.trim();
+    Serial.println(data);
+  param1 = data.toInt();
+  data = inputString.substring(inputString.indexOf(","));
+   data.replace(",", " ");
+    data.trim();
+        Serial.println(data);
+  param2 = data.toInt();
+  Serial.println(param1);
+  Serial.println(param2);
+  moves(param1, param2);
   return 0; 
 }
 
+
+
 void moduleExecute(String mData)
 {
-  
-  Serial.println("execute function");
-  String index = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
+
+  mData = mData.substring(mData.indexOf(':', mData.indexOf(":") + 5 ));
+  mData = mData.substring(mData.indexOf(':', mData.indexOf(":") + 1 ));
+
+  String index = mData.substring(mData.indexOf(":"), (mData.indexOf(':', mData.indexOf(":") + 1 )));
+
+    index.replace(":", " ");
+    index.trim();
   int indexFunction= index.toInt();
-  inputString = inputString.substring(inputString.indexOf(':', inputString.indexOf(":") + 1 ));
+Serial.println(mData);
+  mData = mData.substring(mData.indexOf(':', mData.indexOf(":") + 1 ));
+
+  Serial.println(mData);
   switch (indexFunction){
     case 1:
     {
-    function_1(inputString);
+    function_1(mData);
     break;
     }
-      
     default: 
     CreateMessage("answer:error:function_index");
-    
-  }
-  
-  
+    }
   return;
 }
 
 void serialEvent() {
 
   while (Serial.available()) {
-    // get the new byte:
+    // get the new byte:тимjь бо
     char inChar = (char)Serial.read();
    
     // add it to the inputString:
@@ -256,29 +267,26 @@ void serialEvent() {
     // so the main loop can do something about it:
      if ((inChar == '&') and (inputString.charAt(inputString.length()-2) == '&'))
     {
-         Serial.println("int " + inputString);
-      String mData = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
-     mData.replace(":", " ");
+       String mData = inputString.substring(inputString.indexOf(":"), (inputString.indexOf(':', inputString.indexOf(":") + 1 )));
+        mData.replace(":", " ");
      mData.trim();
       unsigned int length = mData.toInt();
       //RCML:6:2:axis:5:5&&
-      Serial.println("dlina " + length);
-      if (length != 0) {
+       if (length != 0) {
         mData = inputString.substring((inputString.indexOf(':', inputString.indexOf(":") + 1 )), (inputString.indexOf(':', inputString.indexOf(":") + 2 )));
-       Serial.println("mdata sd " + mData);
+ 
         mData.replace(":", " ");
         mData.trim();
         unsigned int mCount = mData.toInt();
         
         if (mCount != messageCount)
         {
-          Serial.println("error");
+          //todo
         }
         mData = inputString.substring((inputString.indexOf(':', inputString.indexOf(":") + 3 )), inputString.indexOf("&&"));
-        Serial.println("mdata " + mData);
-        if (mData.lastIndexOf("connect") != -1)
+       if (mData.lastIndexOf("connect") != -1)
           moduleConnect(mData);
-          if (mData.lastIndexOf("require")!= -1)
+        if (mData.lastIndexOf("require")!= -1)
           moduleRequre(mCount);
         if (mData.lastIndexOf("robot_capabilites")!= -1)
           moduleCapalities();
