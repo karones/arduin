@@ -1,0 +1,87 @@
+#define txPin 50
+#define Te 320
+unsigned long incomingByte; 
+void setup(){
+  pinMode(txPin, OUTPUT);
+  Serial.begin(9600); 
+Serial.setTimeout(4);
+}
+
+void loop()
+{
+  if (Serial.available() > 0) { 
+incomingByte = Serial.parseInt(); 
+
+if(incomingByte == 1) SendCame(0b100010001111) ;
+if(incomingByte == 2) SendCame(0b100010001110) ; 
+if(incomingByte == 3) SendCame(0b100010001100) ;
+if(incomingByte == 4) SendCame(0b100110001100) ;
+if(incomingByte == 5) SendCame(0b101010001100) ;
+if(incomingByte == 6) SendCame(0b110010001100) ;
+if(incomingByte == 7) SendCame(0b100010101100) ;
+if(incomingByte == 8) SendCame(0b100001010100) ;
+
+if(incomingByte == 9) SendCame(0b100010001111) ;
+if(incomingByte == 10) SendCame(0b100010001110) ; 
+if(incomingByte == 11) SendCame(0b100010001100) ;
+if(incomingByte == 12) SendCame(0b100110001100) ;
+if(incomingByte == 13) SendCame(0b101010001100) ;
+if(incomingByte == 14) SendCame(0b110010001100) ;
+if(incomingByte == 15) SendCame(0b100010101100) ;
+if(incomingByte == 16) SendCame(0b100001010100) ;
+if(incomingByte == 16) SendCame(0b100001010100) ;
+if(incomingByte == 20) perebor() ;
+if(incomingByte >100) perebor_to_int(incomingByte) ;
+}
+}
+void perebor_to_int (int k)
+{
+ for (int i=k; i<4096; i++)
+{
+  SendCame(i);
+  if (i%100 ==0)
+  {
+    Serial.println(i);
+  }
+}
+  
+}
+
+void perebor ()
+{
+ for (int i=0; i<4096; i++)
+{
+  SendCame(i);
+  if (i%100 ==0)
+  {
+    Serial.println(i);
+  }
+}
+  
+}
+void SendCameBit(byte b)
+{
+  delayMicroseconds(Te);
+  if (!b) digitalWrite(txPin,HIGH);
+  delayMicroseconds(Te);
+  digitalWrite(txPin,HIGH);
+  delayMicroseconds(Te);
+  digitalWrite(txPin,LOW);
+}
+
+void SendCame(long Code)
+{     
+  
+  for (int j=0;j<5;j++) // посылку посылаем как и брелок - 4 раза подряд.
+  {
+    digitalWrite(txPin,HIGH);
+    delayMicroseconds(Te);
+    digitalWrite(txPin,LOW);// посылаем стартовый импульс
+    
+    for (byte i=12;i>0;i--){
+      SendCameBit(bitRead(Code, i-1)); // побитово перебираем и посылаем код
+    }
+    delay(16);
+  }
+  delay(50); // сделать паузу после посылки на 2 с
+}
