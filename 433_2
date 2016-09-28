@@ -6,9 +6,11 @@
 #define Te 320
 #define Button1 2
 DI Key(Button1, 10);
+#define Button2 3
+DI Key2(Button2, 10);
 Timer_P KeyDelay;
 boolean Key_old;
-volatile int i;
+volatile int run;
 
 unsigned long incomingByte; 
 void setup(){
@@ -41,7 +43,7 @@ if(incomingByte == 14) SendCame(0b110010001100) ;
 if(incomingByte == 15) SendCame(0b100010101100) ;
 if(incomingByte == 16) SendCame(0b100001010100) ;
 if(incomingByte == 16) SendCame(0b100001010100) ;
-if(incomingByte == 20) perebor() ;
+if(incomingByte == 0) perebor() ;
 if(incomingByte >100) perebor_to_int(incomingByte) ;
 }
  Key.DI_Refresh();
@@ -57,12 +59,12 @@ if(incomingByte >100) perebor_to_int(incomingByte) ;
 
 void perebor_to_int (int k)
 {
- for ( i=k; i<4096; i++)
+ for ( run=k; run<4096; run++)
 {
-  SendCame(i);
-  if (i%100 ==0)
+  SendCame(run);
+  if (run%100 ==0)
   {
-    Serial.println(i);
+    Serial.println(run);
   }
 }
   
@@ -70,12 +72,12 @@ void perebor_to_int (int k)
 
 void perebor ()
 {
- for ( i=0; i<4096; i++)
+ for ( run=0; run<4096; run++)
 {
-  SendCame(i);
-  if (i%100 ==0)
+  SendCame(run);
+  if (run%100 ==0)
   {
-    Serial.println(i);
+    Serial.println(run);
   }
 }
   
@@ -114,10 +116,11 @@ Serial.println("EEPROM clear");
 }
 void stoping()
 {
- i = 5000; 
+ run = 5000; 
 }
-void saveAndStoping()
+void saveAndStopping()
 {
-   EEPROM.write(i, 0);
- i = 5000; 
+   EEPROM.write(run, 0);
+ run = 5000; 
+ Serial.println("stop");
 }
