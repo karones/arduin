@@ -1,7 +1,18 @@
+#include <EEPROM.h>
+#include <DI.h>
+#include <Timer_P.h>
+#define eerom_byte 512
 #define txPin 50
 #define Te 320
+#define Button1 2
+DI Key(Button1, 10);
+Timer_P KeyDelay;
+boolean Key_old;
+volatile int i;
+
 unsigned long incomingByte; 
 void setup(){
+   attachInterrupt(1, saveAndStopping, RISING);
   pinMode(txPin, OUTPUT);
   Serial.begin(9600); 
 Serial.setTimeout(4);
@@ -11,7 +22,7 @@ void loop()
 {
   if (Serial.available() > 0) { 
 incomingByte = Serial.parseInt(); 
-
+if(incomingByte == -1) erase() ;
 if(incomingByte == 1) SendCame(0b100010001111) ;
 if(incomingByte == 2) SendCame(0b100010001110) ; 
 if(incomingByte == 3) SendCame(0b100010001100) ;
@@ -33,10 +44,20 @@ if(incomingByte == 16) SendCame(0b100001010100) ;
 if(incomingByte == 20) perebor() ;
 if(incomingByte >100) perebor_to_int(incomingByte) ;
 }
+ Key.DI_Refresh();
+
+	  if (!Key.DI_Read() && Key_old && !KeyDelay.Q0()) Serial.println("Shot"); // Было короткое нажатие
+
+	  if (!Key.DI_Read() && Key_old && KeyDelay.Q0()) perebor(); // Было длинное нажатие
+
+  KeyDelay.TimerV(Key.DI_Read(), 0, 2, 1000);                  // 1000мс для длительного нажатия
+  	  Key_old = Key.DI_Read();
 }
+
+
 void perebor_to_int (int k)
 {
- for (int i=k; i<4096; i++)
+ for ( i=k; i<4096; i++)
 {
   SendCame(i);
   if (i%100 ==0)
@@ -49,7 +70,7 @@ void perebor_to_int (int k)
 
 void perebor ()
 {
- for (int i=0; i<4096; i++)
+ for ( i=0; i<4096; i++)
 {
   SendCame(i);
   if (i%100 ==0)
@@ -78,10 +99,25 @@ void SendCame(long Code)
     delayMicroseconds(Te);
     digitalWrite(txPin,LOW);// посылаем стартовый импульс
     
-    for (byte i=12;i>0;i--){
-      SendCameBit(bitRead(Code, i-1)); // побитово перебираем и посылаем код
+    for (byte bi=12;bi>0;bi--){
+      SendCameBit(bitRead(Code, bi-1)); // побитово перебираем и посылаем код
     }
     delay(16);
   }
-  delay(50); // сделать паузу после посылки на 2 с
+  delay(50); 
+}
+void erase(){
+for (int ei=0;ei<eerom_byte;ei++)
+     EEPROM.write(ei, 0);
+  
+Serial.println("EEPROM clear");
+}
+void stoping()
+{
+ i = 5000; 
+}
+void saveAndStoping()
+{
+   EEPROM.write(i, 0);
+ i = 5000; 
 }
