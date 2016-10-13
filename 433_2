@@ -6,81 +6,79 @@
 #define Te 320
 #define Button1 2
 DI Key(Button1, 10);
-#define Button2 3
-DI Key2(Button2, 10);
 Timer_P KeyDelay;
 boolean Key_old;
 volatile int run;
+#define SizeKey  30; //размер ключа
+
 
 unsigned long incomingByte; 
 void setup(){
-   attachInterrupt(1, saveAndStopping, RISING);
+  attachInterrupt(1, saveAndStopping, RISING);
   pinMode(txPin, OUTPUT);
   Serial.begin(9600); 
-Serial.setTimeout(4);
+  Serial.setTimeout(4);
 }
 
 void loop()
 {
   if (Serial.available() > 0) { 
-incomingByte = Serial.parseInt(); 
-if(incomingByte == -1) erase() ;
-if(incomingByte == 1) SendCame(0b100010001111) ;
-if(incomingByte == 2) SendCame(0b100010001110) ; 
-if(incomingByte == 3) SendCame(0b100010001100) ;
-if(incomingByte == 4) SendCame(0b100110001100) ;
-if(incomingByte == 5) SendCame(0b101010001100) ;
-if(incomingByte == 6) SendCame(0b110010001100) ;
-if(incomingByte == 7) SendCame(0b100010101100) ;
-if(incomingByte == 8) SendCame(0b100001010100) ;
+    incomingByte = Serial.parseInt(); 
+    if(incomingByte == -1) erase() ;
+    if(incomingByte == 0) perebor() ;
+    if(incomingByte >100) perebor_to_int(incomingByte) ;
+  }
+  Key.DI_Refresh();
 
-if(incomingByte == 9) SendCame(0b100010001111) ;
-if(incomingByte == 10) SendCame(0b100010001110) ; 
-if(incomingByte == 11) SendCame(0b100010001100) ;
-if(incomingByte == 12) SendCame(0b100110001100) ;
-if(incomingByte == 13) SendCame(0b101010001100) ;
-if(incomingByte == 14) SendCame(0b110010001100) ;
-if(incomingByte == 15) SendCame(0b100010101100) ;
-if(incomingByte == 16) SendCame(0b100001010100) ;
-if(incomingByte == 16) SendCame(0b100001010100) ;
-if(incomingByte == 0) perebor() ;
-if(incomingByte >100) perebor_to_int(incomingByte) ;
-}
- Key.DI_Refresh();
+  if (!Key.DI_Read() && Key_old && !KeyDelay.Q0()) perebor_to_errom(); // Было короткое нажатие
 
-	  if (!Key.DI_Read() && Key_old && !KeyDelay.Q0()) Serial.println("Shot"); // Было короткое нажатие
-
-	  if (!Key.DI_Read() && Key_old && KeyDelay.Q0()) perebor(); // Было длинное нажатие
+  if (!Key.DI_Read() && Key_old && KeyDelay.Q0()) perebor(); // Было длинное нажатие
 
   KeyDelay.TimerV(Key.DI_Read(), 0, 2, 1000);                  // 1000мс для длительного нажатия
-  	  Key_old = Key.DI_Read();
+  Key_old = Key.DI_Read();
 }
 
 
 void perebor_to_int (int k)
 {
- for ( run=k; run<4096; run++)
-{
-  SendCame(run);
-  if (run%100 ==0)
+  for ( run=k; run<4096; run++)
   {
-    Serial.println(run);
+    SendCame(run);
+    if (run%100 ==0)
+    {
+      Serial.println(run);
+    }
   }
+
 }
-  
+void perebor_to_errom ()
+{
+  byte count;
+  count=EEPROM.read(0); //считываем количество записанных карт, храниться в 0 байте
+  for ( int key=0; key<count; ++key)
+  {
+    int keyOpen = EEPROM_int_read(key * 2 + 1);
+    byte keyStop = keyOpen - SizeKey;
+    Serial.println(run);
+    for ( run=keyOpen; run>keyStop; run--)
+    {
+      SendCame(run);
+
+    }
+  }
 }
 
 void perebor ()
 {
- for ( run=0; run<4096; run++)
-{
-  SendCame(run);
-  if (run%100 ==0)
+  for ( run=0; run<4096; run++)
   {
-    Serial.println(run);
+    SendCame(run);
+    if (run%100 ==0)
+    {
+      Serial.println(run);
+    }
   }
-}
-  
+
 }
 void SendCameBit(byte b)
 {
@@ -94,13 +92,13 @@ void SendCameBit(byte b)
 
 void SendCame(long Code)
 {     
-  
+
   for (int j=0;j<5;j++) // посылку посылаем как и брелок - 4 раза подряд.
   {
     digitalWrite(txPin,HIGH);
     delayMicroseconds(Te);
     digitalWrite(txPin,LOW);// посылаем стартовый импульс
-    
+
     for (byte bi=12;bi>0;bi--){
       SendCameBit(bitRead(Code, bi-1)); // побитово перебираем и посылаем код
     }
@@ -108,19 +106,51 @@ void SendCame(long Code)
   }
   delay(50); 
 }
+
 void erase(){
-for (int ei=0;ei<eerom_byte;ei++)
-     EEPROM.write(ei, 0);
-  
-Serial.println("EEPROM clear");
+  for (int ei=0;ei<eerom_byte;ei++)
+    EEPROM.write(ei, 0);
+
+  Serial.println("EEPROM clear");
 }
 void stoping()
 {
- run = 5000; 
+
+  run = 5000; 
 }
 void saveAndStopping()
 {
-   EEPROM.write(run, 0);
- run = 5000; 
- Serial.println("stop");
+  byte count;
+  count=EEPROM.read(0);
+  count++;
+  EEPROM_int_write(count*2, run);
+  run = 5000; 
+  Serial.println("stop");
+}
+
+void out()
+{
+  Serial.println("-----------");
+  int vid;
+  for (int b=1;b<count*2+1;b+2){ //выводим все записанные карты.
+    vid=EEPROM_int_read(b);
+
+    Serial.println(vid);
+  }
+  Serial.println("-----------");
+}
+
+// чтение
+int EEPROM_int_read(int addr) {    
+  byte raw[2];
+  for(byte i = 0; i < 2; i++) raw[i] = EEPROM.read(addr+i);
+  int &num = (int&)raw;
+  return num;
+}
+
+// запись
+void EEPROM_int_write(int addr, int num) {
+  byte raw[2];
+  (int&)raw = num;
+  for(byte i = 0; i < 2; i++) EEPROM.write(addr+i, raw[i]);
 }
